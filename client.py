@@ -138,6 +138,8 @@ class battle(QWidget):
                 if [x, y] in self.myAttackedBlocks:
                     qp.setBrush(QtGui.QColor(255, 100, 100, fade))
                     flag = False
+                else:
+                    qp.setBrush(QtGui.QColor(0, 0, 255, fade))
 
                 if flag:
                     for ship in self.myShips:
@@ -185,7 +187,11 @@ class battle(QWidget):
                 if [x + 11, y] == self.mouseOn and self.turn:
                     qp.setBrush(QtGui.QColor(255, 69, 0, 140))
                 if [x, y] in self.opponentAttackedBlocks:
-                    qp.setBrush(QtGui.QColor(255, 100, 100, fade))
+                    if any([x, y] in ship for ship in self.opponentShips):
+                        qp.setBrush(QtGui.QColor(255, 100, 100, fade))  # Red for hit
+                    else:
+                        qp.setBrush(QtGui.QColor(0, 0, 255, fade))  # Dark blue for miss
+
                 qp.drawRect((x + 11) * 50, y * 50, 50, 50)
 
         # print whose turn is it currently
@@ -249,31 +255,26 @@ class battle(QWidget):
         self.update()
 
     def attackOnMe(self, coords):
-        '''
-        Event when the client is attacked
-        '''
         print("i am attacked")
-        for ship in self.myShips:
-            if coords in ship:
+        if any(coords in ship for ship in self.myShips):
+            self.myAttackedBlocks.append(coords)
+            self.soundhit.play()
+        else:
+            if coords not in self.myAttackedBlocks:  # Ensure no duplicate misses
                 self.myAttackedBlocks.append(coords)
-                self.soundhit.play()
-            else:
-                self.soundmiss.play()
+            self.soundmiss.play()
 
         self.turn = True
         self.update()
 
     def attackOnOpponent(self, coords):
-        '''
-        Event when client's opponent is attacked
-        '''
-        for ship in self.opponentShips:
-            if coords in ship:
+        if any(coords in ship for ship in self.opponentShips):
+            self.opponentAttackedBlocks.append(coords)
+            self.soundhit.play()
+        else:
+            if coords not in self.opponentAttackedBlocks:  # Ensure no duplicate misses
                 self.opponentAttackedBlocks.append(coords)
-                self.soundhit.play()
-            else:
-                self.soundmiss.play()
-
+            self.soundmiss.play()
         self.turn = False
         self.update()
 
