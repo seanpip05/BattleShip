@@ -25,7 +25,7 @@ print(" server running..."
 
       '''
           ((desctiptor,name),(desctiptor,name),(desctiptor,name),(desctiptor,name),(desctiptor,name))
-      
+
       ''')
 
 
@@ -218,13 +218,6 @@ def cpu(player, msgtype, msgdata):
         if player.name in playerlist:
             del playerlist[player.name]
 
-    elif msgtype == "saveMatch":
-        cursor.execute(
-            "INSERT INTO matches (player1, player2, winner) VALUES (%s, %s, %s)",
-            (msgdata["player1"], msgdata["player2"], msgdata["winner"])
-        )
-        db.commit()
-        print(f"Match saved: {msgdata['player1']} vs {msgdata['player2']}, Winner: {msgdata['winner']}")
 
         sendlist()
 
@@ -321,6 +314,15 @@ def cpu(player, msgtype, msgdata):
 
             if player == game.player2:
                 sendMsg(jsonData, game.player1)
+
+    elif msgtype == "saveMatch":
+        cursor.execute(
+            "INSERT INTO matches (player1, player2, winner) VALUES (%s, %s, %s)",
+            (msgdata["player1"], msgdata["player2"], msgdata["winner"])
+        )
+        db.commit()
+        print(f"Match saved: {msgdata['player1']} vs {msgdata['player2']}, Winner: {msgdata['winner']}")
+
     else:
         print("Unhandled MsgType..!!!")
 

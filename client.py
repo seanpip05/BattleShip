@@ -15,7 +15,9 @@ db = mysql.connector.connect(
     host="localhost",
     user="root",
     password="R$E#W@Q!",
-    database="BattleShip"
+    database="BattleShip",
+    auth_plugin='mysql_native_password'
+
 )
 cursor = db.cursor()
 
