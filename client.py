@@ -2,13 +2,33 @@ from PyQt5 import QtCore, QtNetwork, QtMultimedia, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QVBoxLayout, QListWidget, QPushButton, QMessageBox, \
     QDialog, QInputDialog
 from PyQt5.QtMultimedia import QSoundEffect
-import socket, sys, threading, json
+import socket, sys, threading, json, mysql.connector
 import os
 from PyQt5.QtCore import QUrl
 
 ships = None
 name = None
 
+
+# MySQL Connection Setup
+db = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="R$E#W@Q!",
+    database="BattleShip"
+)
+cursor = db.cursor()
+
+# Create table if not exists
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS matches (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    player1 VARCHAR(255),
+    player2 VARCHAR(255),
+    winner VARCHAR(255)
+)
+''')
+db.commit()
 
 def getMyShips(name):
     '''
@@ -429,19 +449,36 @@ class WinLoseMsg(QtWidgets.QDialog):
         super(WinLoseMsg, self).__init__(parent)
 
         self.game = game
-        msgBox = QtWidgets.QMessageBox()  # Changed from QtGui.QMessageBox
+        msgBox = QtWidgets.QMessageBox()
 
+        # Determine winner and loser
+        player1 = self.game.selectplayerwidget.parent.playerlistwidget.item(0).text()
+        player2 = self.game.selectplayerwidget.parent.playerlistwidget.item(1).text()
+        winner = player1 if iswin else player2
+
+        # Send match result to server
+        match_result = {
+            "type": "saveMatch",
+            "data": {
+                "player1": player1,
+                "player2": player2,
+                "winner": winner
+            }
+        }
+        jsonData = json.dumps(match_result)
+        mysocket.send(jsonData.encode())  # Send result to the server
+
+        # Show message box
         if iswin:
             msgBox.setText('         You win')
         else:
             msgBox.setText('         You lose')
 
-        anotherplayerbutton = QtWidgets.QPushButton('  Play with another player ')  # Changed from QtGui.QPushButton
+        anotherplayerbutton = QtWidgets.QPushButton('  Play with another player ')
         anotherplayerbutton.clicked.connect(self.anotherplayerclicked)
 
-        msgBox.addButton(anotherplayerbutton, QtWidgets.QMessageBox.YesRole)  # Changed from QtGui.QMessageBox.YesRole
-
-        ret = msgBox.exec_()
+        msgBox.addButton(anotherplayerbutton, QtWidgets.QMessageBox.YesRole)
+        msgBox.exec_()
 
     def anotherplayerclicked(self):
         '''
@@ -449,7 +486,6 @@ class WinLoseMsg(QtWidgets.QDialog):
         '''
         self.game.hide()
         self.game.selectplayerwidget.show()
-
 
 class SelectPlayerWidget(QtWidgets.QWidget):
     def __init__(self, parent):
