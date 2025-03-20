@@ -1,9 +1,5 @@
-import socket, threading, sys, json  # CORRECT
+import socket, threading, sys, json, mysql.connector  # CORRECT
 from functools import reduce
-
-from mysql.connector import cursor
-
-from client import db
 
 playerlist = {}
 gamebox = {}
@@ -98,6 +94,34 @@ class Game:
 
 # end Game
 
+def insert_game_result(winner_name, loser_name):
+    try:
+        # Establish a connection to the MySQL database
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="R$E#W@Q!",
+            database="battleship",
+            auth_plugin = 'mysql_native_password'
+        )
+        cursor = conn.cursor()
+
+        # Insert the game result into the database
+        cursor.execute('''
+            INSERT INTO game_results (winner, loser) VALUES (%s, %s)
+        ''', (winner_name, loser_name))
+
+        # Commit the transaction
+        conn.commit()
+    except mysql.connector.Error as e:
+        print(f"Database error: {e}")
+    finally:
+        # Close the cursor and connection
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 def startNewGame(player1, player2):
     game = Game(player1, player2)
     return game
@@ -127,77 +151,48 @@ def cpu(player, msgtype, msgdata):
     global gamebox, playerlist
 
     if msgtype == "register":
-        """
-        "Register":
-        -register the client to the server
-        ->data: {
-                    "name": <name of the client>
-                }
-        """
+        # Existing code for registration
         name = msgdata
         return registerClient(player, name)
 
     elif msgtype == "sendChallenge":
-        '''
-        expected message format : data :  {
-                                            'to' : name
-                                            }
-        '''
-        frm = player.name  # name
-        to = playerlist[msgdata['to']]  # an object
-
-        # message the opponent about the incoming challenge
+        # Existing code for sending challenge
+        frm = player.name
+        to = playerlist[msgdata['to']]
         dictData = {
             "type": "sendChallenge",
             "data": {
-                "from": frm  # name
+                "from": frm
             }
         }
         jsonData = json.dumps(dictData)
         sendMsg(jsonData, to)
 
     elif msgtype == "acceptChallenge":
-        '''
-        expected message format : data : {
-                                        'player1' : name,
-                                        'player2' : name  
-                                    }
-        '''
+        # Existing code for accepting challenge
         data = msgdata
-        player1 = playerlist[data['player1']]  # objeect
-        player2 = playerlist[data['player2']]  # object
-
+        player1 = playerlist[data['player1']]
+        player2 = playerlist[data['player2']]
         player1.isBusy = True
         player2.isBusy = True
-
         sendlist()
 
-        # register new game
         game = startNewGame(player1, player2)
         gamebox[player1] = game
         gamebox[player2] = game
 
-        # message the players to begin the game
         dictData = {
             'type': 'startGame',
-            'data': {
-
-            }
+            'data': {}
         }
         jsonData = json.dumps(dictData)
         sendMsg(jsonData, player1)
         sendMsg(jsonData, player2)
 
     elif msgtype == "declineChallenge":
-        '''
-        expected message format : data : {
-                                        'challenger' : name 
-                                    }
-        '''
+        # Existing code for declining challenge
         data = msgdata
         challenger = playerlist[data['challenger']]
-
-        # message the challenger if his challenge is declined
         dictData = {
             'type': 'challengeDeclined',
             'data': {}
@@ -206,32 +201,20 @@ def cpu(player, msgtype, msgdata):
         sendMsg(jsonData, challenger)
 
     elif msgtype == 'iAmOut':
-        '''
-        expected message format : data : {
-
-                                            }
-        '''
-
+        # Existing code for handling player leaving
         print(" got i am out from " + player.name)
         player.socketDesc.close()
-
         if player.name in playerlist:
             del playerlist[player.name]
-
-
         sendlist()
 
-        # send message on both sides to abort the game and return to initial stage
-
-
     elif msgtype == "abortGame":
-
+        # Existing code for aborting the game
         oppmsg = {"type": "oppIsOut", "data": None}
         oppmsg = json.dumps(oppmsg)
 
         if player in gamebox:
             game = gamebox[player]
-
             game.player2.isBusy = False
             game.player1.isBusy = False
 
@@ -242,21 +225,14 @@ def cpu(player, msgtype, msgdata):
 
         sendlist()
 
-
-    elif msgtype == "setBoats":  # arranging done, now register my boat positions
-        '''
-        Message type : data : {
-                            coords : [[],[]]
-                        }
-        '''
+    elif msgtype == "setBoats":
+        # Existing code for setting boats
         data = msgdata
         boatcoords = data["coords"]
-
         game = gamebox[player]
         game.setBoats(player, boatcoords)
 
-        if len(game.shipsPlayer1) != 0 and len(game.shipsPlayer2) != 0:  # both have set their ships
-            # send begin battle message
+        if len(game.shipsPlayer1) != 0 and len(game.shipsPlayer2) != 0:
             dictData = {
                 'type': 'beginBattle',
                 'data': {
@@ -268,38 +244,30 @@ def cpu(player, msgtype, msgdata):
                 }
             }
             jsonData = json.dumps(dictData)
-
             sendMsg(jsonData, game.player1)
             sendMsg(jsonData, game.player2)
 
     elif msgtype == "attack":
-        """
-        "msgtype":"attack":
-            a player will attack on the perticular cordinates (x,y).
-
-        "msgdata:":{"coordinates":(x,y)}
-
-        """
+        # Existing code for handling attacks
         game = gamebox[player]
         game.attack(player, msgdata["coordinates"])
 
         winner, loser = game.checkResult()
-        if winner != None and loser != None:
+        if winner is not None and loser is not None:
             print("sending verdict")
 
+            # Insert the game result into the database
+            insert_game_result(winner.name, loser.name)
+
             msgcontainerforwinner = {"type": "verdict", "data": {"result": "win"}}
-            msgcontainerforloser = {"type": "verdict", "data": {"result": "loose"}}
+            msgcontainerforloser = {"type": "verdict", "data": {"result": "lose"}}
 
             msgforwinner = json.dumps(msgcontainerforwinner)
             msgforloser = json.dumps(msgcontainerforloser)
 
-            # winner.socketDesc.send(msgforwinner)
-            # loser.socketDesc.send(msgforloser)
-
             sendMsg(msgforwinner, winner)
             sendMsg(msgforloser, loser)
-
-        else:  # send coordinates to client as well
+        else:
             dictData = {
                 'type': 'updateAttackCoords',
                 'data': {
@@ -307,27 +275,13 @@ def cpu(player, msgtype, msgdata):
                 }
             }
             jsonData = json.dumps(dictData)
-
             game = gamebox[player]
             if player == game.player1:
                 sendMsg(jsonData, game.player2)
-
             if player == game.player2:
                 sendMsg(jsonData, game.player1)
-
-    elif msgtype == "saveMatch":
-        cursor.execute(
-            "INSERT INTO matches (player1, player2, winner) VALUES (%s, %s, %s)",
-            (msgdata["player1"], msgdata["player2"], msgdata["winner"])
-        )
-        db.commit()
-        print(f"Match saved: {msgdata['player1']} vs {msgdata['player2']}, Winner: {msgdata['winner']}")
-
     else:
         print("Unhandled MsgType..!!!")
-
-    # end cpu
-
 
 def registerClient(client, name):
     """

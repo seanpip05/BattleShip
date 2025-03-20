@@ -10,28 +10,6 @@ ships = None
 name = None
 
 
-# MySQL Connection Setup
-db = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="R$E#W@Q!",
-    database="BattleShip",
-    auth_plugin='mysql_native_password'
-
-)
-cursor = db.cursor()
-
-# Create table if not exists
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS matches (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    player1 VARCHAR(255),
-    player2 VARCHAR(255),
-    winner VARCHAR(255)
-)
-''')
-db.commit()
-
 def getMyShips(name):
     '''
     Return the ship list of the requester
