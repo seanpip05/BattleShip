@@ -432,9 +432,31 @@ class WinLoseMsg(QtWidgets.QDialog):
         self.game = game
         msgBox = QtWidgets.QMessageBox()
 
-        # Determine winner and loser
-        player1 = self.game.selectplayerwidget.parent.playerlistwidget.item(0).text()
-        player2 = self.game.selectplayerwidget.parent.playerlistwidget.item(1).text()
+        # Determine players safely
+        player1 = None
+        player2 = None
+
+        try:
+            # Try to get player1 from the first item
+            if self.game.playerlistwidget.count() > 0:
+                player1 = self.game.playerlistwidget.item(0).text()
+        except Exception as e:
+            print(f"Error getting player1: {e}")
+            player1 = name  # Fallback to the current player's name
+
+        try:
+            # Try to get player2, but handle cases with fewer than 2 players
+            if self.game.playerlistwidget.count() > 1:
+                player2 = self.game.playerlistwidget.item(1).text()
+            else:
+                # If no second player in list, use the server's game info
+                player2 = self.game.selectplayerwidget.parent().playerlistwidget.currentItem().text() if \
+                    self.game.selectplayerwidget.parent().playerlistwidget.currentItem() else "Opponent"
+        except Exception as e:
+            print(f"Error getting player2: {e}")
+            player2 = "Opponent"  # Fallback name
+
+        # Determine winner
         winner = player1 if iswin else player2
 
         # Send match result to server
@@ -474,7 +496,7 @@ class SelectPlayerWidget(QtWidgets.QWidget):
 
         self.parent = parent
         self.VBox = QtWidgets.QVBoxLayout()  # Changed from QtGui.QVBoxLayout
-        parent.playerlistwidget = QtWidgets.QListWidget()  # Changed from QtGui.QListWidget
+        self.parent.playerlistwidget = QtWidgets.QListWidget()  # Changed from QtGui.QListWidget
         self.ChallangeButton = QtWidgets.QPushButton("Challange")  # Changed from QtGui.QPushButton
 
         # Updated signal/slot connection
